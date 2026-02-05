@@ -107,7 +107,7 @@ export function isAdminRole(role: string): boolean {
 export function hasPermission(userRole: string, permission: string): boolean {
   if (!isValidRole(userRole)) return false
   
-  const permissions = ROLE_PERMISSIONS[userRole as UserRole]
+  const permissions = ROLE_PERMISSIONS[userRole as UserRole] as readonly string[]
   return permissions.includes(permission)
 }
 

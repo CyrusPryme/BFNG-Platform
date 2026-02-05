@@ -37,29 +37,24 @@ export async function GET(request: NextRequest) {
       prisma.product.findMany({
         where,
         include: {
-          category: true,
-          vendor: {
+          vendorProducts: {
             include: {
-              user: {
+              vendor: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  id: true,
+                  businessName: true,
+                  contactName: true,
+                  email: true,
+                  phone: true,
+                  category: true,
+                  commissionRate: true,
+                  isActive: true
                 }
               }
             }
-          },
-          inventory: {
-            where: {
-              type: 'HARD'
-            },
-            orderBy: {
-              updatedAt: 'desc'
-            },
-            take: 1
           }
         },
         orderBy: [
-          { isFeatured: 'desc' },
           { name: 'asc' }
         ],
         skip: (page - 1) * limit,
@@ -138,12 +133,12 @@ export async function POST(request: NextRequest) {
     // For vendors, ensure they can only create products for themselves
     if (session.user.role === 'VENDOR') {
       const vendor = await prisma.vendor.findUnique({
-        where: { userId: session.user.id }
+        where: { email: session.user.email }
       })
       
       if (!vendor || vendorId !== vendor.id) {
         return NextResponse.json(
-          { error: 'Vendors can only create products for themselves' },
+          { error: 'Unauthorized to create products for this vendor' },
           { status: 403 }
         )
       }
@@ -154,31 +149,14 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         description,
-        categoryId,
+        category: categoryId,
         type: type.toUpperCase(),
         basePrice,
         bulkPrice,
         bulkMinQty,
         unit,
-        vendorId,
-        commissionRate,
-        allowSubstitution,
-        isFeatured,
-        isActive: false, // Requires admin approval
-        images
-      },
-      include: {
-        category: true,
-        vendor: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true
-              }
-            }
-          }
-        }
+        image: images[0] || '',
+        isActive: false // Requires admin approval
       }
     })
 
@@ -187,13 +165,11 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         action: 'PRODUCT_CREATED',
-        entity: 'Product',
-        entityId: product.id,
-        changes: {
+        metadata: JSON.stringify({
+          productId: product.id,
           name,
-          type: product.type,
-          basePrice
-        }
+          category: categoryId
+        })
       }
     })
 

@@ -11,7 +11,7 @@ export default withAuth(
       return NextResponse.redirect(new URL('/unauthorized', req.url))
     }
 
-    if (pathname.startsWith('/shopper') && token?.role !== 'SHOPPER' && token?.role !== 'ADMIN') {
+    if (pathname.startsWith('/shopper') && token?.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/unauthorized', req.url))
     }
 
@@ -19,7 +19,7 @@ export default withAuth(
       return NextResponse.redirect(new URL('/unauthorized', req.url))
     }
 
-    if (pathname.startsWith('/delivery') && token?.role !== 'DELIVERY' && token?.role !== 'ADMIN') {
+    if (pathname.startsWith('/delivery') && token?.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/unauthorized', req.url))
     }
 

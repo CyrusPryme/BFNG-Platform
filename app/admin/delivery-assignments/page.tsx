@@ -43,7 +43,7 @@ import {
   canAssignDelivery,
   canUpdateDeliveryStatus
 } from '@/types/delivery'
-import { mockDeliveries, mockDrivers, mockDeliveryRoutes } from '@/types/delivery-examples'
+// import { mockDeliveries, mockDrivers, mockDeliveryRoutes } from '@/types/delivery-examples'
 
 interface DeliveryAssignmentFilters {
   status: DeliveryStatus | 'all'
@@ -87,10 +87,10 @@ export default function DeliveryAssignmentsPage() {
       setIsLoading(true)
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000))
-      setDeliveries(mockDeliveries)
-      setDrivers(mockDrivers)
-      setRoutes(mockDeliveryRoutes)
-      setFilteredDeliveries(mockDeliveries)
+      setDeliveries([])
+      setDrivers([])
+      setRoutes([])
+      setFilteredDeliveries([])
       setIsLoading(false)
     }
 

@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -13,12 +11,10 @@ async function main() {
     update: {},
     create: {
       email: 'admin@bfng.com.gh',
-      phone: '+233200000001',
       password: adminPassword,
       role: 'ADMIN',
       firstName: 'System',
       lastName: 'Administrator',
-      emailVerified: new Date(),
     },
   });
 
@@ -29,18 +25,13 @@ async function main() {
   const customerUser = await prisma.user.create({
     data: {
       email: 'akua.mensah@gmail.com',
-      phone: '+233244123456',
       password: customerPassword,
       role: 'CUSTOMER',
       firstName: 'Akua',
       lastName: 'Mensah',
-      emailVerified: new Date(),
       customer: {
         create: {
-          isDiaspora: false,
-          isInstitutional: false,
           whatsappNumber: '+233244123456',
-          preferredDeliveryDay: 'Friday',
         },
       },
     },
@@ -49,21 +40,24 @@ async function main() {
   console.log('✓ Sample customer created');
 
   // Create sample address
-  await prisma.address.create({
-    data: {
-      customerId: customerUser.customer!.id,
-      label: 'Home',
-      recipientName: 'Akua Mensah',
-      recipientPhone: '+233244123456',
-      street: '12 Cantonments Road',
-      area: 'Cantonments',
-      city: 'Accra',
-      region: 'Greater Accra',
-      landmark: 'Near Trust Hospital',
-      gpsAddress: 'GA-123-4567',
-      isDefault: true,
-    },
+  const customer = await prisma.customer.findFirst({
+    where: { userId: customerUser.id }
   });
+  
+  if (customer) {
+    await prisma.address.create({
+      data: {
+        customerId: customer.id,
+        label: 'Home',
+        recipientName: 'Akua Mensah',
+        street: '12 Cantonments Road',
+        area: 'Cantonments',
+        city: 'Accra',
+        region: 'Greater Accra',
+        isDefault: true,
+      },
+    });
+  }
 
   console.log('✓ Sample address created');
 
@@ -101,92 +95,91 @@ async function main() {
     },
   ];
 
-  const createdCategories = await Promise.all(
-    categories.map((cat) =>
-      prisma.category.upsert({
-        where: { slug: cat.slug },
-        update: {},
-        create: cat,
-      })
-    )
-  );
+  // const createdCategories = await Promise.all(
+  //   categories.map((cat) =>
+  //     prisma.category.upsert({
+  //       where: { slug: cat.slug },
+  //       update: {},
+  //       create: cat,
+  //     })
+  //   )
+  // );
 
-  console.log('✓ Categories created');
+  console.log('✓ Categories skipped (model not in schema)');
 
   // Create sample products
-  const vegetables = await prisma.category.findUnique({
-    where: { slug: 'fresh-vegetables' },
-  });
+  // const vegetables = await prisma.category.findUnique({
+  //   where: { slug: 'fresh-vegetables' },
+  // });
 
-  const madeInGhana = await prisma.category.findUnique({
-    where: { slug: 'made-in-ghana' },
-  });
+  // const madeInGhana = await prisma.category.findUnique({
+  //   where: { slug: 'made-in-ghana' },
+  // });
 
   const products = [
     {
       name: 'Garden Eggs',
       slug: 'garden-eggs',
-      categoryId: vegetables!.id,
+      category: 'Fresh Vegetables',
       type: 'FRESH' as const,
       basePrice: 25,
       bulkPrice: 22,
       bulkMinQty: 5,
       unit: 'kg',
       description: 'Fresh garden eggs from Kumasi',
-      isActive: true,
-      isFeatured: true,
-      allowSubstitution: true,
+      image: '/images/products/garden-eggs.jpg',
     },
     {
       name: 'Kontomire (Cocoyam Leaves)',
       slug: 'kontomire',
-      categoryId: vegetables!.id,
+      category: 'Fresh Vegetables',
       type: 'FRESH' as const,
       basePrice: 15,
       bulkPrice: 13,
       bulkMinQty: 3,
       unit: 'bunch',
-      description: 'Fresh kontomire for light soup',
-      isActive: true,
-      isFeatured: true,
-      allowSubstitution: true,
+      description: 'Fresh cocoyam leaves, perfect for stews',
+      image: '/images/products/kontomire.jpg',
     },
     {
       name: 'Fresh Tomatoes',
       slug: 'tomatoes',
-      categoryId: vegetables!.id,
+      category: 'Fresh Vegetables',
       type: 'FRESH' as const,
       basePrice: 30,
       bulkPrice: 27,
       bulkMinQty: 5,
       unit: 'kg',
-      description: 'Ripe tomatoes',
+      description: 'Ripe fresh tomatoes from local farms',
+      image: '/images/products/tomatoes.jpg',
       isActive: true,
       allowSubstitution: true,
     },
     {
       name: 'Onions',
       slug: 'onions',
-      categoryId: vegetables!.id,
+      category: 'Fresh Vegetables',
       type: 'FRESH' as const,
       basePrice: 20,
       bulkPrice: 18,
-      bulkMinQty: 5,
+      bulkMinQty: 4,
       unit: 'kg',
-      description: 'Fresh onions',
+      description: 'Fresh yellow onions',
+      image: '/images/products/onions.jpg',
       isActive: true,
       allowSubstitution: true,
     },
     {
       name: 'Ginger',
       slug: 'ginger',
-      categoryId: vegetables!.id,
+      category: 'Fresh Vegetables',
       type: 'FRESH' as const,
       basePrice: 35,
+      bulkPrice: 32,
+      bulkMinQty: 3,
       unit: 'kg',
       description: 'Fresh ginger root',
-      isActive: true,
-      allowSubstitution: false,
+      image: '/images/products/ginger.jpg',
     },
   ];
 
@@ -207,24 +200,27 @@ async function main() {
   const vendorUser = await prisma.user.create({
     data: {
       email: 'ghana.natural@example.com',
-      phone: '+233302000001',
       password: vendorPassword,
       role: 'VENDOR',
       firstName: 'Ghana',
       lastName: 'Natural',
-      vendor: {
-        create: {
-          businessName: 'Ghana Natural Products',
-          description: 'Premium Made-in-Ghana products',
-          phoneNumber: '+233302000001',
-          email: 'ghana.natural@example.com',
-          address: 'Industrial Area, Tema',
-          region: 'Greater Accra',
-          isApproved: true,
-          isActive: true,
-          defaultCommissionRate: 15,
-        },
-      },
+    },
+  });
+
+  // Create vendor record separately
+  const vendor = await prisma.vendor.create({
+    data: {
+      businessName: 'Ghana Natural Products',
+      contactName: 'Ghana Natural',
+      email: 'ghana.natural@example.com',
+      phone: '+233302000001',
+      address: 'Industrial Area, Tema',
+      city: 'Tema',
+      region: 'Greater Accra',
+      category: 'PACKAGED',
+      commissionRate: 15,
+      isApproved: true,
+      isActive: true,
     },
   });
 
@@ -235,61 +231,47 @@ async function main() {
     data: {
       name: 'Nkontomire Powder',
       slug: 'nkontomire-powder',
-      categoryId: madeInGhana!.id,
+      category: 'Made in Ghana',
       type: 'MADE_IN_GHANA',
       basePrice: 45,
       unit: '500g',
       description: 'Premium dried and powdered kontomire',
-      vendorId: vendorUser.vendor!.id,
-      commissionRate: 15,
-      isActive: true,
-      isFeatured: true,
-      allowSubstitution: false,
+      image: '/images/products/nkontomire-powder.jpg',
     },
   });
 
   console.log('✓ Vendor product created');
 
   // Create inventory records
-  const allProducts = await prisma.product.findMany();
+  // const allProducts = await prisma.product.findMany();
   
-  await Promise.all(
-    allProducts.map((product) =>
-      prisma.inventory.create({
-        data: {
-          productId: product.id,
-          type: product.type === 'FRESH' ? 'SOFT' : 'HARD',
-          quantity: product.type === 'FRESH' ? 0 : 100,
-          expectedAvailable: true,
-        },
-      })
-    )
-  );
+  // await Promise.all(
+  //   allProducts.map((product: any) =>
+  //     prisma.inventory.create({
+  //       data: {
+  //         productId: product.id,
+  //         type: product.type === 'FRESH' ? 'SOFT' : 'HARD',
+  //         quantity: product.type === 'FRESH' ? 0 : 100,
+  //         expectedAvailable: true,
+  //       },
+  //     })
+  //   )
+  // );
 
-  console.log('✓ Inventory records created');
+  console.log('✓ Inventory records skipped (model not in schema)');
 
   // Create system config
-  await prisma.systemConfig.upsert({
-    where: { key: 'order_cutoff_day' },
-    update: {},
-    create: {
-      key: 'order_cutoff_day',
-      value: '3', // Wednesday
-      description: 'Day of week for order cutoff (0=Sunday)',
-    },
-  });
+  // await prisma.systemConfig.upsert({
+  //   where: { key: 'order_cutoff_day' },
+  //   update: {},
+  //   create: {
+  //     key: 'order_cutoff_day',
+  //     value: '3', // Wednesday
+  //     description: 'Day of week for order cutoff (0=Sunday)',
+  //   },
+  // });
 
-  await prisma.systemConfig.upsert({
-    where: { key: 'buying_cycle_day' },
-    update: {},
-    create: {
-      key: 'buying_cycle_day',
-      value: '4', // Thursday
-      description: 'Day of week for bulk buying (0=Sunday)',
-    },
-  });
-
-  console.log('✓ System configuration created');
+  console.log('✓ System config skipped (model not in schema)');
 
   console.log('🎉 Database seeded successfully!');
   console.log('\n📝 Login Credentials:');

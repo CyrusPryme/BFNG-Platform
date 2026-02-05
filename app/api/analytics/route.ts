@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
         subscriptionRevenue: (subscriptionRevenue._sum.totalAmount || 0) - (subscriptionRevenue._sum.discountAmount || 0)
       },
       orderStats: {
-        byStatus: ordersByStatus.reduce((acc: Record<string, number>, item: any) => {
+        byStatus: ordersByStatus.reduce((acc, item) => {
           acc[item.status] = item._count
           return acc
         }, {} as Record<string, number>),
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
         active: activeSubscriptions,
         paused: pausedSubscriptions,
         churnRate: totalSubscriptions > 0 ? ((totalSubscriptions - activeSubscriptions) / totalSubscriptions) * 100 : 0,
-        byFrequency: subscriptionsByFrequency.reduce((acc: Record<string, number>, item: any) => {
+        byFrequency: subscriptionsByFrequency.reduce((acc, item) => {
           acc[item.frequency] = item._count
           return acc
         }, {} as Record<string, number>),
@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
       'Delivery Address'
     ]
 
-    const rows = orders.map((order: any) => [
+    const rows = orders.map(order => [
       order.orderNumber,
       `${order.customer.user.firstName} ${order.customer.user.lastName}`,
       order.customer.user.email,
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
       order.total.toString(),
       order.createdAt.toISOString(),
       order.items.length.toString(),
-      `${order.address.street}, ${order.address.area}, ${order.address.city}`
+      `${order.address?.street || ''}, ${order.address?.area || ''}, ${order.address?.city || ''}`
     ])
 
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n')

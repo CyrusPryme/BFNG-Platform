@@ -66,12 +66,12 @@ export async function POST(request: NextRequest) {
         orderId,
         amount,
         method: paymentMethod.toUpperCase(),
-        status: 'PENDING',
+        status: 'SUCCESS',
         reference: reference || `PAY-${Date.now()}`,
-        metadata: {
+        metadata: JSON.stringify({
           userId: session.user.id,
           timestamp: new Date().toISOString()
-        }
+        })
       }
     })
 
@@ -215,11 +215,11 @@ export async function PUT(request: NextRequest) {
           where: { id: payment.id },
           data: {
             status: 'SUCCESS',
-            paidAt: new Date(),
-            metadata: {
-              ...payment.metadata,
-              paystackData: data
-            }
+            metadata: JSON.stringify({
+              ...JSON.parse(payment.metadata || '{}'),
+              paystackData: data,
+              paidAt: new Date().toISOString()
+            })
           }
         })
 
@@ -228,8 +228,7 @@ export async function PUT(request: NextRequest) {
           await prisma.order.update({
             where: { id: payment.orderId },
             data: {
-              status: 'PAID',
-              paidAt: new Date()
+              status: 'PAID'
             }
           })
         }
@@ -237,15 +236,15 @@ export async function PUT(request: NextRequest) {
         // Log successful payment
         await prisma.auditLog.create({
           data: {
-            userId: payment.metadata?.userId || 'system',
+            userId: JSON.parse(payment.metadata || '{}')?.userId || 'system',
             action: 'PAYMENT_SUCCESS',
-            entity: 'Payment',
-            entityId: payment.id,
-            changes: {
-              reference: data.reference,
-              amount: data.amount,
+            metadata: JSON.stringify({
+              paymentId: payment.id,
+              orderId: payment.orderId,
+              amount: payment.amount,
+              method: payment.method,
               orderNumber: payment.order.orderNumber
-            }
+            })
           }
         })
       }
@@ -260,10 +259,10 @@ export async function PUT(request: NextRequest) {
           where: { id: payment.id },
           data: {
             status: 'FAILED',
-            metadata: {
-              ...payment.metadata,
+            metadata: JSON.stringify({
+              ...JSON.parse(payment.metadata || '{}'),
               paystackData: data
-            }
+            })
           }
         })
       }

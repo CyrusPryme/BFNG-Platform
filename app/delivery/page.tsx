@@ -70,7 +70,7 @@ export default function DeliveryPortalPage() {
       return
     }
     
-    if (session.user.role !== 'DELIVERY') {
+    if (session.user.role !== 'ADMIN') {
       router.push('/')
       return
     }

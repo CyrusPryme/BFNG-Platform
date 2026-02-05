@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { findUserByEmail } from '@/lib/simple-db'
 import bcrypt from 'bcryptjs'
+import { UserRole } from '@/lib/roles'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -58,7 +59,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token) {
         session.user.id = token.sub!
-        session.user.role = token.role as string
+        session.user.role = token.role as UserRole
         session.user.firstName = token.firstName as string
         session.user.lastName = token.lastName as string
         session.user.customer = token.customer as any
