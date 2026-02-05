@@ -2,7 +2,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Package, Truck, Users } from 'lucide-react'
-import productsFromImages from '@/data/products-from-images'
 
 // Custom featured products for the hero grid using bfngfiless webp images
 const featuredProducts = [

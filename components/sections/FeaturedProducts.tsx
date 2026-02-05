@@ -5,15 +5,37 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ShoppingCart, Star } from 'lucide-react'
-import productsFromImages from '@/data/products-from-images'
 
-// Select 4 featured products for the homepage
-const featuredProducts = [
-  { ...productsFromImages[0], badge: 'Best Seller', rating: 4.8, reviews: 124 },
-  { ...productsFromImages[6], badge: 'Made in Ghana', rating: 4.9, reviews: 89 },
-  { ...productsFromImages[1], badge: 'Fresh Today', rating: 4.7, reviews: 156 },
-  { ...productsFromImages[8], badge: 'Premium', rating: 4.9, reviews: 67 }
+// Temporary mock products - replace with API call or real data
+const productsFromImages = [
+  {
+    id: '1',
+    name: 'Fresh Tomatoes',
+    image: '/images/products/tomatoes.jpg',
+    basePrice: 25,
+    bulkPrice: 22,
+    bulkMinQty: 5,
+    unit: 'kg',
+    badge: 'Best Seller',
+    rating: 4.8,
+    reviews: 124
+  },
+  {
+    id: '2', 
+    name: 'Organic Honey',
+    image: '/images/products/honey.jpg',
+    basePrice: 45,
+    bulkPrice: 40,
+    bulkMinQty: 3,
+    unit: 'jar',
+    badge: 'Made in Ghana',
+    rating: 4.9,
+    reviews: 89
+  }
 ]
+
+// Select featured products for the homepage
+const featuredProducts = productsFromImages
 
 export function FeaturedProducts() {
   return (
@@ -27,74 +49,76 @@ export function FeaturedProducts() {
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredProducts.map((product) => (
-            <Card key={product.id} className="group hover:shadow-lg transition-shadow">
-              <CardContent className="p-0">
-                <div className="relative">
-                  <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      width={300}
-                      height={300}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  
-                  {product.badge && (
-                    <div className="absolute top-2 left-2">
-                      <Badge className="bg-ghana-green text-white">
-                        {product.badge}
-                      </Badge>
+          {featuredProducts.length > 0 ? (
+            featuredProducts.map((product) => (
+              <Card key={product.id} className="group hover:shadow-lg transition-shadow">
+                <CardContent className="p-0">
+                  <div className="relative">
+                    <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={300}
+                        height={300}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
-                  )}
-                  
-                  {product.bulkPrice && (
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="destructive">
-                        Save GH₵{(product.basePrice - product.bulkPrice).toFixed(2)}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2 group-hover:text-ghana-green transition-colors">
-                    {product.name}
-                  </h3>
-                  
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm ml-1">{product.rating}</span>
-                    </div>
-                    <span className="text-sm text-gray-500">({product.reviews})</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="text-2xl font-bold text-ghana-green">
-                        GH₵{product.basePrice.toFixed(2)}
+                    
+                    {product.badge && (
+                      <div className="absolute top-2 left-2">
+                        <Badge className="bg-ghana-green text-white">
+                          {product.badge}
+                        </Badge>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        per {product.unit}
+                    )}
+                    
+                    {product.bulkPrice && (
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="destructive">
+                          Save GH₵{(product.basePrice - product.bulkPrice).toFixed(2)}
+                        </Badge>
                       </div>
-                      {product.bulkPrice && (
-                        <div className="text-sm text-ghana-red font-medium">
-                          Bulk: GH₵{product.bulkPrice.toFixed(2)}
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                   
-                  <Button className="w-full bg-ghana-green hover:bg-ghana-green/90">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Add to Cart
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm text-gray-600">
+                        {product.rating} ({product.reviews} reviews)
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xl font-bold text-ghana-green">
+                          GH₵{product.basePrice}
+                        </span>
+                        <span className="text-sm text-gray-500">/{product.unit}</span>
+                        {product.bulkPrice && (
+                          <div className="text-sm text-gray-500">
+                            <span className="line-through">GH₵{product.basePrice}</span>
+                            <span className="text-ghana-green ml-1">GH₵{product.bulkPrice}</span>
+                            <span className="text-xs text-gray-400">
+                              ({product.bulkMinQty}+ {product.unit})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <Button size="sm" className="bg-ghana-green hover:bg-ghana-green/90">
+                        <ShoppingCart className="w-4 h-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-500">Featured products will be available soon.</p>
+            </div>
+          )}
         </div>
         
         <div className="text-center mt-12">

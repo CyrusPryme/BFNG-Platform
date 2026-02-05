@@ -7,7 +7,44 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ShoppingCart, Plus } from 'lucide-react'
-import productsFromImages from '@/data/products-from-images'
+
+// Temporary mock products - replace with API call or real data
+const productsFromImages = [
+  {
+    id: '1',
+    name: 'Fresh Tomatoes',
+    slug: 'fresh-tomatoes',
+    image: '/images/products/tomatoes.jpg',
+    basePrice: 25,
+    bulkPrice: 22,
+    bulkMinQty: 5,
+    unit: 'kg',
+    badge: 'Best Seller',
+    rating: 4.8,
+    reviews: 124,
+    description: 'Fresh, ripe tomatoes from local farms',
+    type: 'FRESH',
+    category: 'Fresh Vegetables',
+    inStock: true
+  },
+  {
+    id: '2', 
+    name: 'Organic Honey',
+    slug: 'organic-honey',
+    image: '/images/products/honey.jpg',
+    basePrice: 45,
+    bulkPrice: 40,
+    bulkMinQty: 3,
+    unit: 'jar',
+    badge: 'Made in Ghana',
+    rating: 4.9,
+    reviews: 89,
+    description: 'Pure organic honey from Ghanaian beekeepers',
+    type: 'MADE_IN_GHANA',
+    category: 'Made in Ghana',
+    inStock: true
+  }
+]
 
 interface Product {
   id: string
