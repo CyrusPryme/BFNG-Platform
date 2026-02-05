@@ -1,0 +1,34 @@
+{
+  "users": [
+    {
+      "id": "admin-1",
+      "email": "admin@bfng.com.gh",
+      "password": "$2a$10$kczUkgW53v3bfAWl4.00reWVGzNJMw2W7/kZ3sAWlcoqPBJwzgsmi",
+      "role": "ADMIN",
+      "firstName": "System",
+      "lastName": "Administrator",
+      "isActive": true,
+      "createdAt": "2026-02-03T00:08:40.522Z"
+    },
+    {
+      "id": "customer-1",
+      "email": "akua.mensah@gmail.com",
+      "password": "$2a$10$oRleTFV6uLkfL66b1I1tp.k8rZUKQkwymTeK15briyQyxeeP9kbgG",
+      "role": "CUSTOMER",
+      "firstName": "Akua",
+      "lastName": "Mensah",
+      "isActive": true,
+      "createdAt": "2026-02-03T00:08:40.523Z"
+    },
+    {
+      "id": "vendor-1",
+      "email": "ghana.natural@example.com",
+      "password": "$2a$10$OMjNk9B5r/.c5NzuudHgqeHyKsYkvPBXfeI3ETWs/V/Kb6Azr5ppO",
+      "role": "VENDOR",
+      "firstName": "Ghana",
+      "lastName": "Natural",
+      "isActive": true,
+      "createdAt": "2026-02-03T00:08:40.523Z"
+    }
+  ]
+}

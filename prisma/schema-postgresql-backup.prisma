@@ -1,0 +1,476 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  SHOPPER
+  VENDOR
+  DELIVERY
+}
+
+enum OrderStatus {
+  RECEIVED
+  CONFIRMED
+  AWAITING_PAYMENT
+  PAID
+  IN_SOURCING
+  SUBSTITUTION_REQUIRED
+  READY_FOR_PACKING
+  PACKED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  FAILED
+  REFUNDED
+}
+
+enum ProductType {
+  FRESH              // Market-sourced items
+  PACKAGED          // Stored inventory
+  MADE_IN_GHANA     // Vendor products
+}
+
+enum InventoryType {
+  SOFT              // Expected availability
+  HARD              // Actual stock count
+}
+
+enum SubscriptionFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CASH
+  POSTPAID
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+}
+
+enum SubstitutionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  phone         String?   @unique
+  password      String
+  role          UserRole  @default(CUSTOMER)
+  firstName     String
+  lastName      String
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  phoneVerified DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  customer      Customer?
+  vendor        Vendor?
+  deliveries    Delivery[]
+  auditLogs     AuditLog[]
+  
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+model Customer {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  isDiaspora    Boolean   @default(false)
+  isInstitutional Boolean   @default(false)
+  institutionName String?
+  allowPostpaid  Boolean   @default(false)
+  whatsappNumber String
+  preferredDeliveryDay String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  user          User      @relation(fields: [userId], references: [id])
+  orders        Order[]
+  subscriptions Subscription[]
+  addresses      Address[]
+  payments      Payment[]
+}
+
+model Address {
+  id            String    @id @default(cuid())
+  customerId    String
+  label         String
+  recipientName String
+  recipientPhone String
+  street        String
+  area          String
+  city          String
+  region        String
+  landmark      String?
+  gpsAddress    String?
+  isDefault     Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  orders        Order[]
+  deliveries    Delivery[]
+}
+
+model Category {
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  description    String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  products      Product[]
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  categoryId    String
+  type          ProductType
+  basePrice      Float
+  bulkPrice     Float?
+  bulkMinQty     Int?
+  unit          String
+  vendorId      String?
+  commissionRate Float?
+  isActive      Boolean   @default(true)
+  isFeatured    Boolean   @default(false)
+  allowSubstitution Boolean   @default(true)
+  thumbnail     String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  category      Category  @relation(fields: [categoryId], references: [id])
+  vendor        Vendor?    @relation(fields: [vendorId], references: [id])
+  inventory     Inventory[]
+  orderItems    OrderItem[]
+  substitutionsOriginal Substitution[] @relation("OriginalProduct")
+  substitutionsSubstitute Substitution[] @relation("SubstituteProduct")
+  subscriptionItems SubscriptionItem[]
+}
+
+model Vendor {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  businessName  String
+  description    String?
+  phoneNumber   String
+  email         String
+  address       String
+  region        String
+  isApproved    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  defaultCommissionRate Float @default(15)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  user          User      @relation(fields: [userId], references: [id])
+  products      Product[]
+  commissions   VendorCommission[]
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+  customerId        String
+  addressId         String
+  status            OrderStatus @default(RECEIVED)
+  subtotal          Float
+  deliveryFee       Float       @default(0)
+  discount          Float       @default(0)
+  total             Float
+  weekNumber        Int?        // ISO week number
+  buyingCycleDate   DateTime?   // Thursday buying date
+  subscriptionId    String?
+  isSubscriptionOrder Boolean   @default(false)
+  
+  // Timestamps
+  confirmedAt       DateTime?
+  paidAt            DateTime?
+  packedAt          DateTime?
+  deliveredAt        DateTime?
+  completedAt       DateTime?
+  
+  // Notes
+  customerNotes     String?
+  internalNotes     String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  address           Address     @relation(fields: [addressId], references: [id])
+  items             OrderItem[]
+  substitutions     Substitution[]
+  payments          Payment[]
+  delivery          Delivery?
+  vendorCommissions VendorCommission[]
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
+  
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([status])
+  @@index([weekNumber])
+  @@index([buyingCycleDate])
+  @@index([subscriptionId])
+}
+
+model OrderItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  productId     String
+  quantity      Int
+  unitPrice     Float
+  totalPrice    Float
+  isSourced     Boolean   @default(false)
+  sourcedQty    Int?
+  unavailable   Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  order         Order      @relation(fields: [orderId], references: [id])
+  product       Product    @relation(fields: [productId], references: [id])
+  substitutions Substitution[]
+}
+
+model Substitution {
+  id                    String    @id @default(cuid())
+  orderId              String
+  orderItemId           String
+  originalProductId     String
+  substituteProductId    String
+  originalQuantity      Int
+  substituteQuantity    Int
+  originalPrice         Float
+  substitutePrice       Float
+  priceDifference       Float
+  reason                String?
+  status                SubstitutionStatus @default(PENDING)
+  customerResponse      String?
+  respondedAt           DateTime?
+  proposedAt            DateTime  @default(now())
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Relations
+  order                 Order      @relation(fields: [orderId], references: [id])
+  orderItem              OrderItem  @relation(fields: [orderItemId], references: [id])
+  originalProduct        Product    @relation("OriginalProduct", fields: [originalProductId], references: [id])
+  substituteProduct      Product    @relation("SubstituteProduct", fields: [substituteProductId], references: [id])
+}
+
+model Subscription {
+  id                String      @id @default(cuid())
+  customerId        String
+  name              String
+  description       String?
+  frequency         SubscriptionFrequency
+  status            SubscriptionStatus @default(ACTIVE)
+  basePrice         Float
+  deliveryFee        Float
+  startDate         DateTime
+  endDate           DateTime?
+  nextOrderDate     DateTime
+  allowEdits        Boolean   @default(true)
+  allowSkip         Boolean   @default(true)
+  pausedAt          DateTime?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  items             SubscriptionItem[]
+  orders            Order[]
+  skips             SubscriptionSkip[]
+}
+
+model SubscriptionItem {
+  id            String    @id @default(cuid())
+  subscriptionId  String
+  productId     String
+  quantity      Int
+  isFlexible   Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  subscription  Subscription  @relation(fields: [subscriptionId], references: [id])
+  product       Product    @relation(fields: [productId], references: [id])
+}
+
+model SubscriptionSkip {
+  id            String    @id @default(cuid())
+  subscriptionId  String
+  skipDate      DateTime
+  reason        String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  subscription  Subscription  @relation(fields: [subscriptionId], references: [id])
+}
+
+model Payment {
+  id                String      @id @default(cuid())
+  orderId           String
+  customerId        String
+  amount            Float
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  momoNumber        String?
+  paystackRef        String?
+  paystackAccessCode String?
+  paystackAuthUrl    String?
+  paidAt            DateTime?
+  refundReason      String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  order             Order      @relation(fields: [orderId], references: [id])
+  customer          Customer    @relation(fields: [customerId], references: [id])
+}
+
+model Delivery {
+  id                String      @id @default(cuid())
+  orderId           String      @unique
+  addressId         String
+  deliveryPartnerId String?
+  status            DeliveryStatus @default(PENDING)
+  scheduledDate     DateTime?
+  estimatedDeliveryTime String?
+  actualDeliveryTime   DateTime?
+  notes             String?
+  
+  // Proof of delivery
+  photoUrl          String?
+  signature         String?
+  recipientName      String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  order             Order      @relation(fields: [orderId], references: [id])
+  address           Address     @relation(fields: [addressId], references: [id])
+  deliveryPartner    User?      @relation(fields: [deliveryPartnerId], references: [id])
+}
+
+model VendorCommission {
+  id            String    @id @default(cuid())
+  vendorId      String
+  orderId       String
+  amount        Float
+  rate          Float
+  status        String    @default("PENDING") // PENDING, PAID
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  vendor        Vendor      @relation(fields: [vendorId], references: [id])
+  order         Order      @relation(fields: [orderId], references: [id])
+}
+
+model Inventory {
+  id            String    @id @default(cuid())
+  productId     String
+  type          InventoryType
+  quantity      Int        @default(0)
+  expectedAvailable Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  product       Product    @relation(fields: [productId], references: [id])
+}
+
+model SystemConfig {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  value         String
+  description   String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String
+  action        String
+  entity        String
+  entityId      String?
+  changes       Json?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  user          User      @relation(fields: [userId], references: [id])
+}

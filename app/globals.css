@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .bg-ghana-green {
+    background-color: #006B3F;
+  }
+  
+  .text-ghana-green {
+    color: #006B3F;
+  }
+  
+  .border-ghana-green {
+    border-color: #006B3F;
+  }
+  
+  .hover\:bg-ghana-green\/90:hover {
+    background-color: rgba(0, 107, 63, 0.9);
+  }
+  
+  .hover\:text-ghana-green\/80:hover {
+    color: rgba(0, 107, 63, 0.8);
+  }
+  
+  .focus\:ring-ghana-green:focus {
+    --tw-ring-color: #006B3F;
+  }
+  
+  .focus\:border-ghana-green:focus {
+    border-color: #006B3F;
+  }
+  
+  .bg-ghana-green\/10 {
+    background-color: rgba(0, 107, 63, 0.1);
+  }
+}

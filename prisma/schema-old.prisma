@@ -1,0 +1,639 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "sqlite"
+  output = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  SHOPPER
+  VENDOR
+  DELIVERY
+}
+
+enum OrderStatus {
+  RECEIVED
+  CONFIRMED
+  AWAITING_PAYMENT
+  PAID
+  IN_SOURCING
+  SUBSTITUTION_REQUIRED
+  READY_FOR_PACKING
+  PACKED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  FAILED
+  REFUNDED
+}
+
+enum ProductType {
+  FRESH              // Market-sourced items
+  PACKAGED          // Stored inventory
+  MADE_IN_GHANA     // Vendor products
+}
+
+enum InventoryType {
+  SOFT              // Expected availability
+  HARD              // Actual stock count
+}
+
+enum SubscriptionFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CASH
+  POSTPAID
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+}
+
+enum SubstitutionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  phone         String?   @unique
+  password      String
+  role          UserRole  @default(CUSTOMER)
+  firstName     String
+  lastName      String
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  phoneVerified DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  customer      Customer?
+  vendor        Vendor?
+  deliveries    Delivery[]
+  
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+model Customer {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  isDiaspora        Boolean   @default(false)
+  isInstitutional   Boolean   @default(false)
+  institutionName   String?
+  allowPostpaid     Boolean   @default(false)
+  
+  whatsappNumber    String?
+  preferredDeliveryDay String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  orders            Order[]
+  subscriptions     Subscription[]
+  addresses         Address[]
+  payments          Payment[]
+  
+  @@index([userId])
+  @@index([isDiaspora])
+  @@index([isInstitutional])
+}
+
+model Address {
+  id            String    @id @default(cuid())
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  label         String    // "Home", "Office", etc.
+  recipientName String?   // For diaspora orders
+  recipientPhone String?
+  
+  street        String
+  area          String
+  city          String
+  region        String
+  landmark      String?
+  gpsAddress    String?   // Ghana GPS address
+  
+  isDefault     Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  orders        Order[]
+  deliveries    Delivery[]
+  
+  @@index([customerId])
+}
+
+model Category {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  slug          String    @unique
+  description   String?
+  image         String?
+  parentId      String?
+  parent        Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children      Category[] @relation("CategoryHierarchy")
+  
+  sortOrder     Int       @default(0)
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  products      Product[]
+  
+  @@index([slug])
+  @@index([parentId])
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String      @unique
+  description   String?
+  
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  
+  type          ProductType @default(FRESH)
+  
+  // Pricing
+  basePrice     Float
+  bulkPrice     Float?      // For bulk orders
+  bulkMinQty    Int?        // Minimum quantity for bulk price
+  
+  unit          String      // kg, bunch, bag, piece
+  minOrderQty   Float       @default(1)
+  
+  // Made-in-Ghana specific
+  vendorId      String?
+  vendor        Vendor?     @relation(fields: [vendorId], references: [id])
+  commissionRate Float?     // Percentage
+  
+  // Images
+  images        String[]    // Array of image URLs
+  thumbnail     String?
+  
+  // Availability
+  isActive      Boolean     @default(true)
+  isFeatured    Boolean     @default(false)
+  allowSubstitution Boolean @default(true)
+  
+  // SEO
+  metaTitle     String?
+  metaDescription String?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relations
+  orderItems    OrderItem[]
+  inventory     Inventory[]
+  subscriptionItems SubscriptionItem[]
+  substitutions Substitution[] @relation("OriginalProduct")
+  substitutedWith Substitution[] @relation("SubstituteProduct")
+  
+  @@index([slug])
+  @@index([categoryId])
+  @@index([vendorId])
+  @@index([type])
+  @@index([isActive])
+}
+
+model Vendor {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessName  String
+  description   String?
+  logo          String?
+  
+  phoneNumber   String
+  email         String
+  
+  address       String?
+  region        String?
+  
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+  momoNumber    String?
+  
+  isApproved    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  
+  defaultCommissionRate Float @default(15) // 15%
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  products      Product[]
+  commissions   VendorCommission[]
+  
+  @@index([userId])
+  @@index([isApproved])
+}
+
+model VendorCommission {
+  id            String    @id @default(cuid())
+  vendorId      String
+  vendor        Vendor    @relation(fields: [vendorId], references: [id])
+  
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id])
+  
+  amount        Float
+  rate          Float
+  status        PaymentStatus @default(PENDING)
+  
+  paidAt        DateTime?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([vendorId])
+  @@index([orderId])
+  @@index([status])
+}
+
+model Inventory {
+  id            String        @id @default(cuid())
+  productId     String
+  product       Product       @relation(fields: [productId], references: [id])
+  
+  type          InventoryType @default(SOFT)
+  quantity      Float         @default(0)
+  
+  // For market items (soft inventory)
+  expectedAvailable Boolean    @default(true)
+  
+  // For stored items (hard inventory)
+  reorderLevel  Float?
+  reorderQty    Float?
+  
+  location      String?       // Warehouse location
+  
+  lastUpdated   DateTime      @default(now())
+  updatedBy     String?
+  
+  createdAt     DateTime      @default(now())
+  
+  @@unique([productId, type])
+  @@index([productId])
+  @@index([type])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+  
+  customerId        String
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  
+  addressId         String
+  address           Address     @relation(fields: [addressId], references: [id])
+  
+  status            OrderStatus @default(RECEIVED)
+  
+  // Pricing
+  subtotal          Float
+  deliveryFee       Float       @default(0)
+  discount          Float       @default(0)
+  total             Float
+  
+  // Scheduling
+  requestedDeliveryDate DateTime?
+  actualDeliveryDate    DateTime?
+  
+  // Weekly cycle
+  weekNumber        Int?        // ISO week number
+  buyingCycleDate   DateTime?   // Thursday buying date
+  
+  // Subscription link
+  subscriptionId    String?
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
+  isSubscriptionOrder Boolean   @default(false)
+  
+  // Operations
+  confirmedAt       DateTime?
+  paidAt            DateTime?
+  packedAt          DateTime?
+  deliveredAt       DateTime?
+  completedAt       DateTime?
+  
+  // Notes
+  customerNotes     String?
+  internalNotes     String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  items             OrderItem[]
+  substitutions     Substitution[]
+  payments          Payment[]
+  delivery          Delivery?
+  vendorCommissions VendorCommission[]
+  
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([status])
+  @@index([weekNumber])
+  @@index([buyingCycleDate])
+  @@index([subscriptionId])
+}
+
+model OrderItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  
+  quantity      Float
+  unitPrice     Float
+  totalPrice    Float
+  
+  // Sourcing status
+  isSourced     Boolean   @default(false)
+  sourcedQty    Float?
+  unavailable   Boolean   @default(false)
+  
+  notes         String?
+  
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  substitution  Substitution?
+  
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Substitution {
+  id                String              @id @default(cuid())
+  orderId           String
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  orderItemId       String              @unique
+  orderItem         OrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  
+  originalProductId String
+  originalProduct   Product             @relation("OriginalProduct", fields: [originalProductId], references: [id])
+  
+  substituteProductId String?
+  substituteProduct Product?            @relation("SubstituteProduct", fields: [substituteProductId], references: [id])
+  
+  originalQuantity  Float
+  substituteQuantity Float?
+  
+  originalPrice     Float
+  substitutePrice   Float?
+  priceDifference   Float?
+  
+  reason            String?
+  status            SubstitutionStatus  @default(PENDING)
+  
+  proposedAt        DateTime            @default(now())
+  respondedAt       DateTime?
+  
+  customerResponse  String?             // Customer's message if any
+  
+  createdAt         DateTime            @default(now())
+  
+  @@index([orderId])
+  @@index([status])
+}
+
+model Subscription {
+  id            String                @id @default(cuid())
+  customerId    String
+  customer      Customer              @relation(fields: [customerId], references: [id])
+  
+  name          String                // "Weekly Fresh Box", etc.
+  description   String?
+  
+  frequency     SubscriptionFrequency
+  status        SubscriptionStatus    @default(ACTIVE)
+  
+  // Pricing
+  basePrice     Float
+  deliveryFee   Float                 @default(0)
+  
+  // Schedule
+  startDate     DateTime
+  nextOrderDate DateTime?
+  endDate       DateTime?
+  
+  // Delivery preferences
+  preferredDeliveryDay String?
+  addressId     String?
+  
+  // Flexibility
+  allowEdits    Boolean               @default(true)
+  allowSkip     Boolean               @default(true)
+  
+  pausedAt      DateTime?
+  cancelledAt   DateTime?
+  
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  
+  // Relations
+  items         SubscriptionItem[]
+  orders        Order[]
+  skipDates     SubscriptionSkip[]
+  
+  @@index([customerId])
+  @@index([status])
+  @@index([nextOrderDate])
+}
+
+model SubscriptionItem {
+  id              String        @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  
+  quantity        Float
+  isFlexible      Boolean       @default(false) // Can substitute based on availability
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([subscriptionId])
+  @@index([productId])
+}
+
+model SubscriptionSkip {
+  id              String        @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  skipDate        DateTime
+  reason          String?
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([subscriptionId])
+  @@index([skipDate])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id])
+  
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  
+  // Paystack integration
+  paystackRef   String?       @unique
+  paystackAccessCode String?
+  paystackAuthUrl String?
+  
+  // Mobile Money
+  momoNumber    String?
+  momoProvider  String?       // MTN, Vodafone, AirtelTigo
+  
+  paidAt        DateTime?
+  failedAt      DateTime?
+  failureReason String?
+  
+  refundedAt    DateTime?
+  refundAmount  Float?
+  refundReason  String?
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([customerId])
+  @@index([orderId])
+  @@index([status])
+  @@index([paystackRef])
+}
+
+model Delivery {
+  id            String          @id @default(cuid())
+  orderId       String          @unique
+  order         Order           @relation(fields: [orderId], references: [id])
+  
+  addressId     String
+  address       Address         @relation(fields: [addressId], references: [id])
+  
+  status        DeliveryStatus  @default(PENDING)
+  
+  // Assignment
+  assignedTo    String?
+  driver        User?           @relation(fields: [assignedTo], references: [id])
+  
+  // Scheduling
+  scheduledDate DateTime?
+  assignedAt    DateTime?
+  pickedUpAt    DateTime?
+  deliveredAt   DateTime?
+  
+  // Tracking
+  driverNotes   String?
+  proofOfDelivery String?       // Image URL
+  recipientName   String?
+  recipientSignature String?     // Signature image URL
+  
+  // Geolocation
+  latitude      Float?
+  longitude     Float?
+  
+  failureReason String?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([orderId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model SystemConfig {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  value         String
+  description   String?
+  
+  updatedAt     DateTime  @updatedAt
+  updatedBy     String?
+  
+  @@index([key])
+}
+
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String?
+  changes       Json?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([entity])
+  @@index([entityId])
+  @@index([createdAt])
+}
