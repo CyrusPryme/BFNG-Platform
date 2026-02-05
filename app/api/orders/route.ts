@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
 
 /**
  * GET /api/orders
@@ -8,14 +9,14 @@ import { authOptions } from '@/lib/auth';
  */
 export async function GET(request: NextRequest) {
   try {
-    // const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
     
-    // if (!session) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   );
-    // }
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
@@ -61,7 +62,6 @@ export async function GET(request: NextRequest) {
           },
         },
         address: true,
-        delivery: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * POST /api/orders
@@ -113,14 +113,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate address belongs to customer
-    const address = await prisma.address.findFirst({
-      where: {
-        id: addressId,
-        customerId: session.user.customer?.id,
-      },
-    });
+    if (session?.user?.customer?.id) {
+      const address = await prisma.address.findFirst({
+        where: {
+          id: addressId,
+          customerId: session.user.customer.id,
+        },
+      });
 
-    if (!address) {
+      if (!address) {
       return NextResponse.json(
         { error: 'Invalid delivery address' },
         { status: 400 }
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * PATCH /api/orders/:id
@@ -216,15 +217,22 @@ export async function PATCH(
   context: { params: Promise<{ id?: string }> }
 ) {
   try {
-    const { id } = await context.params;
     const session = await getServerSession(authOptions);
     
-    // if (!session || !['ADMIN', 'SHOPPER'].includes(session.user.role)) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   );
-    // }
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const { id } = await context.params;
+
+    if (!session || !['ADMIN', 'SHOPPER'].includes(session.user.role)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     const body = await request.json();
     const { status, metadata } = body;
@@ -250,4 +258,5 @@ export async function PATCH(
       { status: 500 }
     );
   }
+}
 }

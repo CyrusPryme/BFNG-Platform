@@ -87,8 +87,8 @@ export async function GET(request: NextRequest) {
         status: 'ACTIVE'
       },
       _sum: {
-        basePrice: true,
-        deliveryFee: true
+        totalAmount: true,
+        discountAmount: true
       }
     })
 
@@ -209,10 +209,10 @@ export async function GET(request: NextRequest) {
         totalCustomers,
         totalSubscriptions,
         averageOrderValue: totalOrders > 0 ? (totalRevenue._sum.total || 0) / totalOrders : 0,
-        subscriptionRevenue: (subscriptionRevenue._sum.basePrice || 0) + (subscriptionRevenue._sum.deliveryFee || 0)
+        subscriptionRevenue: (subscriptionRevenue._sum.totalAmount || 0) - (subscriptionRevenue._sum.discountAmount || 0)
       },
       orderStats: {
-        byStatus: ordersByStatus.reduce((acc, item) => {
+        byStatus: ordersByStatus.reduce((acc: Record<string, number>, item: any) => {
           acc[item.status] = item._count
           return acc
         }, {} as Record<string, number>),
@@ -228,11 +228,11 @@ export async function GET(request: NextRequest) {
         active: activeSubscriptions,
         paused: pausedSubscriptions,
         churnRate: totalSubscriptions > 0 ? ((totalSubscriptions - activeSubscriptions) / totalSubscriptions) * 100 : 0,
-        byFrequency: subscriptionsByFrequency.reduce((acc, item) => {
+        byFrequency: subscriptionsByFrequency.reduce((acc: Record<string, number>, item: any) => {
           acc[item.frequency] = item._count
           return acc
         }, {} as Record<string, number>),
-        monthlyRevenue: (subscriptionRevenue._sum.basePrice || 0) + (subscriptionRevenue._sum.deliveryFee || 0)
+        monthlyRevenue: (subscriptionRevenue._sum.totalAmount || 0) - (subscriptionRevenue._sum.discountAmount || 0)
       },
       vendorStats: {
         total: totalVendors,
@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
       'Delivery Address'
     ]
 
-    const rows = orders.map(order => [
+    const rows = orders.map((order: any) => [
       order.orderNumber,
       `${order.customer.user.firstName} ${order.customer.user.lastName}`,
       order.customer.user.email,

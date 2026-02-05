@@ -31,13 +31,11 @@ export async function GET(request: NextRequest) {
       data: {
         userId: 'system',
         action: 'CRON_WEEKLY_BULK_BUYING',
-        entity: 'System',
-        entityId: 'cron',
-        changes: {
+        metadata: JSON.stringify({
           ordersProcessed: orders.length,
           productsInShoppingList: bulkShoppingList.length,
           timestamp: new Date().toISOString()
-        }
+        })
       }
     })
 
@@ -53,7 +51,7 @@ export async function GET(request: NextRequest) {
       })),
       message: `Successfully processed ${orders.length} orders for bulk buying`
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Weekly bulk buying cron error:', error)
     
     // Log the error
@@ -61,12 +59,9 @@ export async function GET(request: NextRequest) {
       data: {
         userId: 'system',
         action: 'CRON_WEEKLY_BULK_BUYING_ERROR',
-        entity: 'System',
-        entityId: 'cron',
-        changes: {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }
+        metadata: JSON.stringify({
+          error: error.message
+        })
       }
     })
 
@@ -90,8 +85,7 @@ async function generateBulkShoppingList() {
   const orders = await prisma.order.findMany({
     where: {
       status: 'PAID',
-      buyingCycleDate: thursday,
-      isSubscriptionOrder: false
+      buyingCycleDate: thursday
     },
     include: {
       items: {

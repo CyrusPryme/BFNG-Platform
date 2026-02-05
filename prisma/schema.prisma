@@ -1,4 +1,6 @@
-// Minimal schema for quick testing
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User Management
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -33,6 +36,8 @@ model Customer {
   
   user          User      @relation(fields: [userId], references: [id])
   addresses      Address[]
+  orders        Order[]
+  subscriptions  Subscription[]
 }
 
 model Address {
@@ -50,4 +55,177 @@ model Address {
   updatedAt     DateTime  @updatedAt
   
   customer      Customer  @relation(fields: [customerId], references: [id])
+  orders        Order[]
+}
+
+// Product Management
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  description    String
+  category       String
+  type          String    // FRESH, PACKAGED, MADE_IN_GHANA
+  unit          String    // kg, piece, bottle, etc.
+  basePrice     Float
+  bulkPrice     Float?
+  bulkMinQty    Int?
+  image         String
+  slug          String    @unique
+  inStock       Boolean   @default(true)
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  orderItems    OrderItem[]
+  subscriptionItems SubscriptionItem[]
+  vendorProducts VendorProduct[]
+}
+
+// Order Management
+model Order {
+  id            String    @id @default(cuid())
+  orderNumber   String    @unique
+  customerId    String
+  status        String    // PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  subtotal      Float
+  deliveryFee   Float?
+  discount      Float?
+  total         Float
+  notes         String?
+  buyingCycleDate DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  items         OrderItem[]
+  addressId      String?
+  address       Address?   @relation(fields: [addressId], references: [id])
+  payments       Payment[]
+}
+
+model OrderItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  productId      String
+  quantity       Int
+  unitPrice      Float
+  
+  createdAt     DateTime  @default(now())
+  
+  order         Order     @relation(fields: [orderId], references: [id])
+  product       Product   @relation(fields: [productId], references: [id])
+  
+  @@unique([orderId, productId])
+}
+
+// Payment Management
+model Payment {
+  id            String    @id @default(cuid())
+  orderId       String    @unique
+  amount         Float
+  status         String    // PENDING, SUCCESS, FAILED, REFUNDED
+  method         String    // MOBILE_MONEY, CARD, BANK_TRANSFER
+  reference      String    @unique
+  metadata      String?   // SQLite doesn't support Json type
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  order         Order     @relation(fields: [orderId], references: [id])
+}
+
+// Subscription Management
+model Subscription {
+  id            String    @id @default(cuid())
+  customerId    String
+  frequency     String    // DAILY, WEEKLY, MONTHLY, etc.
+  status        String    // ACTIVE, PAUSED, CANCELLED, EXPIRED
+  nextDelivery   DateTime
+  totalAmount   Float
+  discountAmount Float?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  items         SubscriptionItem[]
+}
+
+model SubscriptionItem {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  productId       String
+  quantity        Int
+  unitPrice       Float
+  canSubstitute   Boolean   @default(true)
+  
+  createdAt       DateTime  @default(now())
+  
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+  product        Product     @relation(fields: [productId], references: [id])
+  
+  @@unique([subscriptionId, productId])
+}
+
+// Vendor Management
+model Vendor {
+  id            String    @id @default(cuid())
+  businessName   String
+  contactName    String
+  email          String    @unique
+  phone          String
+  address        String
+  city           String
+  region         String
+  category       String
+  commissionRate Float
+  isActive       Boolean   @default(true)
+  isApproved     Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  products      VendorProduct[]
+  commissions   VendorCommission[]
+}
+
+model VendorProduct {
+  id            String    @id @default(cuid())
+  vendorId       String
+  productId      String
+  status         String    // PENDING, APPROVED, REJECTED
+  qualityScore   Int?
+  marketPrice    Float
+  proposedPrice  Float
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  vendor        Vendor     @relation(fields: [vendorId], references: [id])
+  product       Product     @relation(fields: [productId], references: [id])
+  
+  @@unique([vendorId, productId])
+}
+
+model VendorCommission {
+  id            String    @id @default(cuid())
+  vendorId       String
+  amount         Float
+  status         String    // PENDING, PAID
+  createdAt     DateTime  @default(now())
+  
+  vendor        Vendor     @relation(fields: [vendorId], references: [id])
+}
+
+// Audit Logging
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String
+  action         String
+  metadata      String?   // SQLite doesn't support Json type
+  ipAddress      String?
+  
+  createdAt     DateTime  @default(now())
 }

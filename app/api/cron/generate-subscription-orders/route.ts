@@ -25,12 +25,9 @@ export async function GET(request: NextRequest) {
       data: {
         userId: 'system',
         action: 'CRON_SUBSCRIPTION_GENERATION',
-        entity: 'System',
-        entityId: 'cron',
-        changes: {
-          ordersGenerated: generatedOrders.length,
-          timestamp: new Date().toISOString()
-        }
+        metadata: JSON.stringify({
+          ordersGenerated: generatedOrders.length
+        })
       }
     })
 
@@ -45,7 +42,7 @@ export async function GET(request: NextRequest) {
       })),
       message: `Successfully generated ${generatedOrders.length} subscription orders`
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Subscription generation cron error:', error)
     
     // Log the error
@@ -53,12 +50,9 @@ export async function GET(request: NextRequest) {
       data: {
         userId: 'system',
         action: 'CRON_SUBSCRIPTION_GENERATION_ERROR',
-        entity: 'System',
-        entityId: 'cron',
-        changes: {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }
+        metadata: JSON.stringify({
+          error: error.message
+        })
       }
     })
 
