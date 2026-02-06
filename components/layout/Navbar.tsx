@@ -32,25 +32,51 @@ export function Navbar() {
     )
   }
 
-  const navigation = [
-    { name: 'Shop', href: '/shop' },
-    { name: 'Subscriptions', href: '/subscriptions' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' }
-  ]
+  // Role-based navigation
+  const getNavigationItems = () => {
+    if (session?.user?.role === USER_ROLES.ADMIN) {
+      // Admin users only see admin-related navigation
+      return [
+        { name: 'Admin Dashboard', href: '/admin' },
+        { name: 'Analytics', href: '/admin/analytics' },
+        { name: 'Orders', href: '/admin/orders' },
+        { name: 'Products', href: '/admin/products' },
+        { name: 'Customers', href: '/admin/customers' },
+        { name: 'Vendors', href: '/admin/vendors' },
+        { name: 'Settings', href: '/admin/settings' }
+      ]
+    } else {
+      // Normal users see customer navigation
+      return [
+        { name: 'Shop', href: '/shop' },
+        { name: 'Subscriptions', href: '/subscriptions' },
+        { name: 'About', href: '/about' },
+        { name: 'Contact', href: '/contact' }
+      ]
+    }
+  }
 
-  const customerNavigation = [
-    { name: 'My Orders', href: '/customer/orders' },
-    { name: 'My Subscriptions', href: '/customer/subscriptions' },
-    { name: 'Profile', href: '/customer/profile' }
-  ]
+  const getCustomerNavigation = () => {
+    // Only non-admin users get customer navigation
+    if (session?.user?.role === USER_ROLES.ADMIN) {
+      return []
+    }
+    return [
+      { name: 'My Orders', href: '/customer/orders' },
+      { name: 'My Subscriptions', href: '/customer/subscriptions' },
+      { name: 'Profile', href: '/customer/profile' }
+    ]
+  }
+
+  const navigation = getNavigationItems()
+  const customerNavigation = getCustomerNavigation()
 
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <Link href={session?.user?.role === USER_ROLES.ADMIN ? '/admin' : '/'} className="flex items-center">
             <img 
               src="/images/bfng-logo-hr1.jpg" 
               alt="BFNG Logo" 
@@ -75,24 +101,33 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-4">
             {session ? (
               <>
-                <Link href="/shop/cart">
-                  <Button variant="outline" size="sm">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Cart
-                    <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
-                      0
-                    </Badge>
-                  </Button>
-                </Link>
+                {/* Only show cart for non-admin users */}
+                {session.user?.role !== USER_ROLES.ADMIN && (
+                  <Link href="/shop/cart">
+                    <Button variant="outline" size="sm">
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Cart
+                      <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
+                        0
+                      </Badge>
+                    </Button>
+                  </Link>
+                )}
                 
                 <div className="relative group">
                   <Button variant="ghost" size="sm">
                     <User className="h-4 w-4 mr-2" />
                     {session.user?.firstName || 'User'}
+                    {session.user?.role === USER_ROLES.ADMIN && (
+                      <Badge variant="destructive" className="ml-2 text-xs">
+                        Admin
+                      </Badge>
+                    )}
                   </Button>
                   
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                     <div className="py-1">
+                      {/* Show customer navigation only for non-admin users */}
                       {customerNavigation.map((item) => (
                         <Link
                           key={item.name}
@@ -102,15 +137,33 @@ export function Navbar() {
                           {item.name}
                         </Link>
                       ))}
-                      <hr className="my-1" />
+                      
+                      {/* Admin-specific navigation */}
                       {session.user?.role === USER_ROLES.ADMIN && (
-                        <Link
-                          href="/admin"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Admin Dashboard
-                        </Link>
+                        <>
+                          <div className="px-4 py-2 text-xs text-gray-500 font-semibold">ADMIN</div>
+                          <Link
+                            href="/admin"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Admin Dashboard
+                          </Link>
+                          <Link
+                            href="/admin/analytics"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Analytics
+                          </Link>
+                          <Link
+                            href="/admin/orders"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Order Management
+                          </Link>
+                        </>
                       )}
+                      
+                      {/* Vendor-specific navigation */}
                       {session.user?.role === USER_ROLES.VENDOR && (
                         <Link
                           href="/vendor"
@@ -119,6 +172,8 @@ export function Navbar() {
                           Vendor Portal
                         </Link>
                       )}
+                      
+                      <hr className="my-1" />
                       <button
                         onClick={() => signOut()}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -176,6 +231,7 @@ export function Navbar() {
               {session ? (
                 <>
                   <hr className="my-2" />
+                  {/* Customer navigation for mobile */}
                   {customerNavigation.map((item) => (
                     <Link
                       key={item.name}
@@ -186,15 +242,36 @@ export function Navbar() {
                       {item.name}
                     </Link>
                   ))}
+                  
+                  {/* Admin navigation for mobile */}
                   {session.user?.role === USER_ROLES.ADMIN && (
-                    <Link
-                      href="/admin"
-                      className="block px-3 py-2 text-gray-700 hover:text-ghana-green hover:bg-gray-50 rounded-md"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Admin Dashboard
-                    </Link>
+                    <>
+                      <div className="px-3 py-2 text-xs text-gray-500 font-semibold">ADMIN FUNCTIONS</div>
+                      <Link
+                        href="/admin"
+                        className="block px-3 py-2 text-gray-700 hover:text-ghana-green hover:bg-gray-50 rounded-md"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                      <Link
+                        href="/admin/analytics"
+                        className="block px-3 py-2 text-gray-700 hover:text-ghana-green hover:bg-gray-50 rounded-md"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Analytics
+                      </Link>
+                      <Link
+                        href="/admin/orders"
+                        className="block px-3 py-2 text-gray-700 hover:text-ghana-green hover:bg-gray-50 rounded-md"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Order Management
+                      </Link>
+                    </>
                   )}
+                  
+                  {/* Vendor navigation for mobile */}
                   {session.user?.role === USER_ROLES.VENDOR && (
                     <Link
                       href="/vendor"
@@ -204,6 +281,7 @@ export function Navbar() {
                       Vendor Portal
                     </Link>
                   )}
+                  
                   <button
                     onClick={() => signOut()}
                     className="block w-full text-left px-3 py-2 text-gray-700 hover:text-ghana-green hover:bg-gray-50 rounded-md"

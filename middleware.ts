@@ -4,13 +4,13 @@ import { getToken } from 'next-auth/jwt'
 import { USER_ROLES } from '@/lib/roles'
 
 /**
- * Middleware for role-based route protection and redirects
+ * Enhanced middleware for strict role-based route protection
  * 
  * This middleware:
  * 1. Protects /admin routes - only ADMIN role can access
  * 2. Protects /vendor routes - only VENDOR or ADMIN role can access
- * 3. Handles role-based redirects after login
- * 4. Prevents admin users from accessing customer-specific pages
+ * 3. COMPLETELY BLOCKS admin users from customer-facing pages
+ * 4. Protects customer-specific routes from unauthorized access
  * 5. Redirects unauthenticated users to login
  */
 export async function middleware(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
     // If no token, redirect to login for protected routes
     if (!token) {
       // Only protect specific routes, not public pages
-      const protectedRoutes = ['/admin', '/vendor', '/shop/cart', '/customer']
+      const protectedRoutes = ['/admin', '/vendor', '/shop/cart', '/customer', '/subscriptions']
       if (protectedRoutes.some(route => pathname.startsWith(route))) {
         const loginUrl = new URL('/auth/signin', request.url)
         loginUrl.searchParams.set('callbackUrl', pathname)
@@ -67,14 +67,43 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next()
     }
 
-    // Prevent admin users from accessing customer-specific pages
-    // This ensures admins don't accidentally land on user pages
+    // COMPLETELY BLOCK admin users from customer-facing pages
+    // Admin users should only see admin functionality
     if (userRole === USER_ROLES.ADMIN) {
-      const customerOnlyRoutes = ['/shop/cart', '/customer/orders', '/customer/subscriptions']
+      const customerOnlyRoutes = [
+        '/shop',
+        '/subscriptions',
+        '/customer',
+        '/shop/cart',
+        '/customer/orders',
+        '/customer/subscriptions',
+        '/customer/profile'
+      ]
+      
       if (customerOnlyRoutes.some(route => pathname.startsWith(route))) {
-        // Redirect admin users to admin dashboard instead of customer pages
+        // Redirect admin users to admin dashboard
         return NextResponse.redirect(new URL('/admin', request.url))
       }
+    }
+
+    // Protect customer-specific routes from non-customer users
+    if (pathname.startsWith('/customer')) {
+      if (userRole !== USER_ROLES.CUSTOMER && userRole !== USER_ROLES.ADMIN) {
+        const unauthorizedUrl = new URL('/unauthorized', request.url)
+        unauthorizedUrl.searchParams.set('message', 'Customer access required')
+        return NextResponse.redirect(unauthorizedUrl)
+      }
+      return NextResponse.next()
+    }
+
+    // Protect subscription routes
+    if (pathname.startsWith('/subscriptions')) {
+      if (userRole !== USER_ROLES.CUSTOMER && userRole !== USER_ROLES.ADMIN) {
+        const unauthorizedUrl = new URL('/unauthorized', request.url)
+        unauthorizedUrl.searchParams.set('message', 'Customer access required')
+        return NextResponse.redirect(unauthorizedUrl)
+      }
+      return NextResponse.next()
     }
 
     // Allow access to all other routes

@@ -57,6 +57,14 @@ export default function UnauthorizedPage() {
         color: 'orange'
       }
     }
+    if (message === 'Customer access required') {
+      return {
+        title: 'Customer Access Required',
+        description: 'You don\'t have permission to access customer pages.',
+        icon: ShoppingBag,
+        color: 'blue'
+      }
+    }
     return {
       title: 'Access Denied',
       description: 'You don\'t have permission to access this page.',
@@ -101,6 +109,14 @@ export default function UnauthorizedPage() {
             >
               <Shield className="h-4 w-4" />
               Go to Admin Dashboard
+            </Button>
+          ) : session.user?.role === 'VENDOR' ? (
+            <Button 
+              onClick={() => router.push('/vendor')}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <Store className="h-4 w-4" />
+              Go to Vendor Portal
             </Button>
           ) : (
             <Button 
