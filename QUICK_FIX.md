@@ -7,18 +7,18 @@ was built on Vercel, which caches dependencies. This leads to an outdated Prisma
 Client because Prisma's auto-generation isn't triggered.
 ```
 
-## Solution (3 Simple Changes)
+## Solution (2 Key Changes)
 
 ### 1. Updated `package.json` Scripts
 ```json
 {
   "scripts": {
-    "build": "next build",
-    "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma db push --accept-data-loss && next build"
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate"
   }
 }
 ```
+✅ **Both `postinstall` AND `build` now run `prisma generate`** for maximum compatibility
 
 ### 2. Updated `prisma/schema.prisma`
 ```prisma
@@ -27,14 +27,15 @@ generator client {
   binaryTargets = ["native", "rhel-openssl-1.0.x"]
 }
 ```
+✅ Added Vercel-compatible binary targets
 
-### 3. Created `vercel.json`
+### 3. Simplified `vercel.json`
 ```json
 {
-  "buildCommand": "prisma generate && prisma db push --accept-data-loss && next build",
   "framework": "nextjs"
 }
 ```
+✅ Let Vercel auto-detect and use the build script from package.json
 
 ## What to Do Next
 
