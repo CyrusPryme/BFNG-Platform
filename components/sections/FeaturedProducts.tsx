@@ -11,7 +11,7 @@ const productsFromImages = [
   {
     id: '1',
     name: 'Fresh Tomatoes',
-    image: '/images/products/tomatoes.jpg',
+    image: '/images/products/tomatoPaste.png',
     basePrice: 25,
     bulkPrice: 22,
     bulkMinQty: 5,
@@ -23,7 +23,7 @@ const productsFromImages = [
   {
     id: '2', 
     name: 'Organic Honey',
-    image: '/images/products/honey.jpg',
+    image: '/images/products/palsHoney365ml.png',
     basePrice: 45,
     bulkPrice: 40,
     bulkMinQty: 3,
