@@ -2,14 +2,24 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Shield, Home, ArrowLeft } from 'lucide-react'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Shield, Home, ArrowLeft, Store, ShoppingBag } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
 export default function UnauthorizedPage() {
   const router = useRouter()
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    // Get the error message from URL params
+    const errorMessage = searchParams.get('message')
+    if (errorMessage) {
+      setMessage(errorMessage)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     // If user is not authenticated, redirect to login
@@ -30,22 +40,47 @@ export default function UnauthorizedPage() {
     )
   }
 
+  const getAccessDeniedMessage = () => {
+    if (message === 'Admin access required') {
+      return {
+        title: 'Admin Access Required',
+        description: 'You don\'t have permission to access the admin panel.',
+        icon: Shield,
+        color: 'red'
+      }
+    }
+    if (message === 'Vendor access required') {
+      return {
+        title: 'Vendor Access Required',
+        description: 'You don\'t have permission to access vendor pages.',
+        icon: Store,
+        color: 'orange'
+      }
+    }
+    return {
+      title: 'Access Denied',
+      description: 'You don\'t have permission to access this page.',
+      icon: Shield,
+      color: 'red'
+    }
+  }
+
+  const { title, description, icon: Icon, color } = getAccessDeniedMessage()
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full space-y-8 text-center">
         {/* Icon */}
         <div className="flex justify-center">
-          <div className="p-3 bg-red-100 rounded-full">
-            <Shield className="h-8 w-8 text-red-600" />
+          <div className={`p-3 bg-${color}-100 rounded-full`}>
+            <Icon className={`h-8 w-8 text-${color}-600`} />
           </div>
         </div>
 
         {/* Title */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Access Denied</h1>
-          <p className="text-gray-600">
-            You don't have permission to access the admin panel.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+          <p className="text-gray-600">{description}</p>
         </div>
 
         {/* User Info */}
@@ -59,13 +94,23 @@ export default function UnauthorizedPage() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <Button 
-            onClick={() => router.push('/')}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <Home className="h-4 w-4" />
-            Go to Homepage
-          </Button>
+          {session.user?.role === 'ADMIN' ? (
+            <Button 
+              onClick={() => router.push('/admin')}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <Shield className="h-4 w-4" />
+              Go to Admin Dashboard
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => router.push('/')}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              Go to Homepage
+            </Button>
+          )}
           
           <Button 
             variant="outline"
@@ -80,7 +125,7 @@ export default function UnauthorizedPage() {
         {/* Help Text */}
         <div className="text-xs text-gray-500 space-y-1">
           <p>If you believe this is an error, please contact your system administrator.</p>
-          <p>Admin access requires the ADMIN role assigned to your account.</p>
+          <p>Access to this page requires specific permissions assigned to your account.</p>
         </div>
 
         {/* Sign Out Option */}

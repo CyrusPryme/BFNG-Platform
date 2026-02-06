@@ -4,28 +4,24 @@ import { getToken } from 'next-auth/jwt'
 import { USER_ROLES } from '@/lib/roles'
 
 /**
- * Middleware to protect all /admin routes
+ * Middleware for role-based route protection and redirects
  * 
  * This middleware:
- * 1. Checks if user is authenticated via JWT token
- * 2. Validates user has ADMIN role
- * 3. Redirects unauthenticated users to login
- * 4. Redirects non-admin users to unauthorized page
- * 5. Allows access to authenticated admin users
+ * 1. Protects /admin routes - only ADMIN role can access
+ * 2. Protects /vendor routes - only VENDOR or ADMIN role can access
+ * 3. Handles role-based redirects after login
+ * 4. Prevents admin users from accessing customer-specific pages
+ * 5. Redirects unauthenticated users to login
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only protect /admin routes and their sub-routes
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next()
-  }
-
-  // Allow static assets and API routes within admin to pass through
+  // Allow static assets, API routes, and Next.js internals to pass through
   if (
-    pathname.startsWith('/admin/_next/') ||
-    pathname.startsWith('/admin/api/') ||
-    pathname.includes('.') // static files
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/api/') ||
+    pathname.includes('.') || // static files
+    pathname.startsWith('/auth/') // auth pages
   ) {
     return NextResponse.next()
   }
@@ -37,25 +33,54 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     })
 
-    // If no token, redirect to login
+    // If no token, redirect to login for protected routes
     if (!token) {
-      const loginUrl = new URL('/auth/signin', request.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
-      return NextResponse.redirect(loginUrl)
+      // Only protect specific routes, not public pages
+      const protectedRoutes = ['/admin', '/vendor', '/shop/cart', '/customer']
+      if (protectedRoutes.some(route => pathname.startsWith(route))) {
+        const loginUrl = new URL('/auth/signin', request.url)
+        loginUrl.searchParams.set('callbackUrl', pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+      return NextResponse.next()
     }
 
-    // Validate the token and check for ADMIN role
-    if (token.role !== USER_ROLES.ADMIN) {
-      // User is authenticated but not an admin
-      const unauthorizedUrl = new URL('/unauthorized', request.url)
-      unauthorizedUrl.searchParams.set('message', 'Admin access required')
-      return NextResponse.redirect(unauthorizedUrl)
+    const userRole = token.role as string
+
+    // Protect /admin routes - only ADMIN role can access
+    if (pathname.startsWith('/admin')) {
+      if (userRole !== USER_ROLES.ADMIN) {
+        const unauthorizedUrl = new URL('/unauthorized', request.url)
+        unauthorizedUrl.searchParams.set('message', 'Admin access required')
+        return NextResponse.redirect(unauthorizedUrl)
+      }
+      return NextResponse.next()
     }
 
-    // User is authenticated and has ADMIN role - allow access
+    // Protect /vendor routes - only VENDOR or ADMIN role can access
+    if (pathname.startsWith('/vendor')) {
+      if (userRole !== USER_ROLES.VENDOR && userRole !== USER_ROLES.ADMIN) {
+        const unauthorizedUrl = new URL('/unauthorized', request.url)
+        unauthorizedUrl.searchParams.set('message', 'Vendor access required')
+        return NextResponse.redirect(unauthorizedUrl)
+      }
+      return NextResponse.next()
+    }
+
+    // Prevent admin users from accessing customer-specific pages
+    // This ensures admins don't accidentally land on user pages
+    if (userRole === USER_ROLES.ADMIN) {
+      const customerOnlyRoutes = ['/shop/cart', '/customer/orders', '/customer/subscriptions']
+      if (customerOnlyRoutes.some(route => pathname.startsWith(route))) {
+        // Redirect admin users to admin dashboard instead of customer pages
+        return NextResponse.redirect(new URL('/admin', request.url))
+      }
+    }
+
+    // Allow access to all other routes
     return NextResponse.next()
   } catch (error) {
-    console.error('Admin middleware error:', error)
+    console.error('Middleware error:', error)
     
     // On any error, redirect to login for safety
     const loginUrl = new URL('/auth/signin', request.url)
@@ -64,13 +89,17 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// Configure the middleware to run on all /admin routes
+// Configure the middleware to run on specific routes
 export const config = {
   matcher: [
     /*
-     * Match all paths that start with /admin
-     * Exclude static files, API routes, and Next.js internals
+     * Match all paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files
+     * - API routes (handled separately)
      */
-    '/admin/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 }

@@ -31,7 +31,16 @@ export default function SignInPage() {
       if (result?.error) {
         setError('Invalid credentials')
       } else {
-        router.push('/')
+        // Get the session to check user role
+        const session = await getSession()
+        
+        if (session?.user?.role === 'ADMIN') {
+          // Redirect admin users to admin dashboard
+          router.push('/admin')
+        } else {
+          // Redirect normal users to homepage/dashboard
+          router.push('/')
+        }
         router.refresh()
       }
     } catch (error) {
